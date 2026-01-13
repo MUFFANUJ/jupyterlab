@@ -3,7 +3,7 @@ name: Issue Command
 on:
   issue_comment:
     types: [created]
-  pull_request:
+  pull_request_target:
     types: [opened]
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
               body = context.payload.comment.body;
               commenter = context.payload.comment.user.login;
               issueNumber = context.issue.number;
-            } else if (eventName === 'pull_request') {
+            } else if (eventName === 'pull_request_target') {
               body = context.payload.pull_request.body;
               commenter = context.payload.pull_request.user.login;
               issueNumber = context.payload.pull_request.number;
