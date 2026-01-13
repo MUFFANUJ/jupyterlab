@@ -268,6 +268,18 @@ issues with labels using the `@meeseeksdev` bot. For example: To apply
 the label `foo` and `bar baz` to an issue, comment
 `@meeseeksdev tag foo "bar baz"` on the issue.
 
+### Issue Assignment and Review Requests
+
+Contributors and maintainers can manage issue assignments and request reviews using comments.
+
+- **Assignment**:
+  - `/assign` or `/assign me`: Assign yourself to the issue or pull request.
+  - `/assign @username`: Assign a specific user.
+  - `/unassign`: Unassign yourself.
+
+- **Review Requests**:
+  - `/review @username` or `/request-review @username`: Request a review from a specific user.
+
 ## Contributing from within the browser
 
 Contributing to JupyterLab codebase is also possible without setting up
