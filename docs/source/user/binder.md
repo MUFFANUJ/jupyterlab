@@ -45,7 +45,7 @@ the following setting:
   }
 }
 ```
-
+  
 Then you will have to copy that file in a special folder:
 
 ```{code-block} sh
