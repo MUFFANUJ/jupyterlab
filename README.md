@@ -175,7 +175,7 @@ To be listed, please submit a pull request with your information.
 
 We have videoconference meetings every week where we discuss what we have been working on and get feedback from one another.
 
-Anyone is welcome to attendddd, if they would like to discuss a topic or just listen in.
+Anyone is welcome to attenddd, if they would like to discuss a topic or just listen in.
 
 - When: Wednesdays 9:00 AM Pacific Time (USA)
 - Where: [`jovyan` Zoom](https://zoom.us/j/95228013874?pwd=Ep7HIk8t9JP6VToxt1Wj4P7K5PshC0.1)
