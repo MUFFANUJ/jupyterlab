@@ -26,12 +26,11 @@ jobs:
             **.rst
             **.txt
             docs/**
+          separator: ","
           files_ignore: |
             node_modules/**
-            jupyterlab/staging/**
-            packages/**/src/**
-            packages/**/test/**
-            packages/**/lib/**
+            jupyterlab/**
+            packages/**
             builder/**
             buildutils/**
             galata/**
@@ -39,6 +38,11 @@ jobs:
             examples/**
             testutils/**
             .yarn/**
+            *.js
+            *.ts
+            *.py
+            *.csv
+            *.ipynb
 
       - name: Run codespell on changed files
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -46,6 +50,6 @@ jobs:
         with:
           path: ${{ steps.changed-files.outputs.all_changed_files }}
           check_filenames: false
-          skip: '*.min.js,*.map,*.lock,*.json,*.ipynb,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff,*.woff2,*.ttf,*.eot,*.pyc'
+          skip: '*.min.js,*.map,*.lock,*.json,*.ipynb,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff,*.woff2,*.ttf,*.eot,*.pyc,*.js,*.ts,*.py,*.csv'
           ignore_words_file: .codespellignore
           only_warn: 0
