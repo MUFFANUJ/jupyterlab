@@ -3,13 +3,10 @@ name: Documentation Spell Check
 on:
   pull_request:
     paths:
+      - '**.md'
+      - '**.rst'
+      - '**.txt'
       - 'docs/**'
-      - '*.md'
-      - '*.rst'
-      - '*.txt'
-      - 'README*'
-      - 'CHANGELOG*'
-      - 'CONTRIBUTING*'
 
 jobs:
   spellcheck:
@@ -18,53 +15,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Sparse checkout for efficiency on large repos
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Run codespell
+      - name: Get changed documentation files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            **.md
+            **.rst
+            **.txt
+            docs/**
+          files_ignore: |
+            node_modules/**
+            jupyterlab/staging/**
+            packages/**/src/**
+            packages/**/test/**
+            packages/**/lib/**
+            builder/**
+            buildutils/**
+            galata/**
+            dev_mode/**
+            examples/**
+            testutils/**
+            .yarn/**
+
+      - name: Run codespell on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: codespell-project/actions-codespell@v2
         with:
-          # Only scan documentation files (positive matching)
-          path: docs README.md CHANGELOG.md CONTRIBUTING.md RELEASE.md CORPORATE.md
-
+          path: ${{ steps.changed-files.outputs.all_changed_files }}
           check_filenames: false
-
-          # Skip patterns for files that might be pulled in or referenced
-          skip: >-
-            node_modules,
-            .git,
-            jupyterlab/staging,
-            packages/*/src,
-            packages/*/test,
-            packages/*/lib,
-            packages/*/style,
-            builder,
-            buildutils,
-            galata,
-            dev_mode,
-            examples,
-            testutils,
-            *.min.js,
-            *.bundle.js,
-            *.map,
-            *.lock,
-            *.json,
-            *.ipynb,
-            *.svg,
-            *.png,
-            *.jpg,
-            *.jpeg,
-            *.gif,
-            *.ico,
-            *.woff,
-            *.woff2,
-            *.ttf,
-            *.eot,
-            *.pyc,
-            yarn.lock,
-            package-lock.json,
-            __pycache__,
-            .yarn
-
+          skip: '*.min.js,*.map,*.lock,*.json,*.ipynb,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff,*.woff2,*.ttf,*.eot,*.pyc'
           ignore_words_file: .codespellignore
           only_warn: 0
