@@ -48,6 +48,21 @@ function getItemTitles(dirListing: DirListing) {
   );
 }
 
+function simulateTouchPointerUp(node: HTMLElement): void {
+  const event = new PointerEvent('pointerup', {
+    bubbles: true,
+    button: 0,
+    cancelable: true,
+    pointerType: 'touch'
+  });
+
+  if (event.pointerType !== 'touch') {
+    Object.defineProperty(event, 'pointerType', { value: 'touch' });
+  }
+
+  node.dispatchEvent(event);
+}
+
 describe('filebrowser/listing', () => {
   describe('DirListing', () => {
     let dirListing: TestDirListing;
@@ -1319,6 +1334,35 @@ describe('filebrowser/listing', () => {
         expect(getItemTitles(dirListing)).toHaveLength(0);
 
         dirListing.onItemOpened.disconnect(fileOpened);
+      });
+
+      it('should open items on touch double tap when single click navigation is disabled', async () => {
+        dirListing.setAllowSingleClickNavigation(false);
+
+        const fileOpened = jest.fn();
+        dirListing.onItemOpened.connect(fileOpened);
+
+        simulateTouchPointerUp(fileNode!);
+        expect(fileOpened).not.toHaveBeenCalled();
+
+        simulateTouchPointerUp(fileNode!);
+        expect(fileOpened).toHaveBeenCalledTimes(1);
+        const openedFile = fileOpened.mock.calls[0][1];
+        expect(openedFile.type).toBe('file');
+
+        const directoryOpened = jest.fn();
+        dirListing.onItemOpened.connect(directoryOpened);
+
+        simulateTouchPointerUp(directoryNode!);
+        expect(directoryOpened).not.toHaveBeenCalled();
+
+        simulateTouchPointerUp(directoryNode!);
+        await signalToPromise(dirListing.updated);
+        expect(directoryOpened).toHaveBeenCalled();
+        expect(getItemTitles(dirListing)).toHaveLength(0);
+
+        dirListing.onItemOpened.disconnect(fileOpened);
+        dirListing.onItemOpened.disconnect(directoryOpened);
       });
 
       it('should check boxes when clicking with single click navigation enabled', async () => {

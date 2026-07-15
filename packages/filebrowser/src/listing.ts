@@ -906,6 +906,9 @@ export class DirListing extends Widget {
       case 'dblclick':
         this.evtDblClick(event as MouseEvent);
         break;
+      case 'pointerup':
+        this._evtPointerUp(event as PointerEvent);
+        break;
       case 'dragenter':
       case 'dragover':
         // Only show visual feedback if drag and drop upload is enabled
@@ -954,6 +957,7 @@ export class DirListing extends Widget {
     node.addEventListener('keydown', this);
     node.addEventListener('click', this);
     node.addEventListener('dblclick', this);
+    node.addEventListener('pointerup', this);
     this._contentSizeObserver.observe(content);
     content.addEventListener('dragenter', this);
     content.addEventListener('dragover', this);
@@ -979,6 +983,8 @@ export class DirListing extends Widget {
     node.removeEventListener('keydown', this);
     node.removeEventListener('click', this);
     node.removeEventListener('dblclick', this);
+    node.removeEventListener('pointerup', this);
+    this._lastTouchTap = null;
     this._contentSizeObserver.disconnect();
     content.removeEventListener('scroll', this);
     content.removeEventListener('dragover', this);
@@ -1528,6 +1534,7 @@ export class DirListing extends Widget {
    */
   setAllowSingleClickNavigation(isEnabled: boolean) {
     this._allowSingleClick = isEnabled;
+    this._lastTouchTap = null;
   }
 
   /**
@@ -2001,20 +2008,49 @@ export class DirListing extends Widget {
    * Handle the `'dblclick'` event for the widget.
    */
   protected evtDblClick(event: MouseEvent): void {
-    // Do nothing if it's not a left mouse press.
-    if (event.button !== 0) {
+    this._openSelectedItem(event);
+  }
+
+  /**
+   * Handle the `'pointerup'` event for the widget.
+   */
+  private _evtPointerUp(event: PointerEvent): void {
+    if (event.pointerType !== 'touch' || this._allowSingleClick) {
       return;
     }
 
-    // Do nothing if any modifier keys are pressed.
-    if (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) {
+    if (!this._shouldOpenFromEvent(event)) {
+      this._lastTouchTap = null;
       return;
     }
 
-    // Do nothing if the double click is on a checkbox. (Otherwise a rapid
-    // check-uncheck on the checkbox will cause the adjacent file/folder to
-    // open, which is probably not what the user intended.)
-    if (this.isWithinCheckboxHitArea(event)) {
+    const index = this._getItemIndexFromEvent(event);
+    if (index === -1) {
+      this._lastTouchTap = null;
+      return;
+    }
+
+    const path = this._sortedItems[index].path;
+    const lastTap = this._lastTouchTap;
+
+    if (
+      !lastTap ||
+      lastTap.path !== path ||
+      event.timeStamp - lastTap.time > Private.TOUCH_DOUBLE_TAP_INTERVAL
+    ) {
+      this._lastTouchTap = { path, time: event.timeStamp };
+      return;
+    }
+
+    this._lastTouchTap = null;
+    this._openSelectedItem(event);
+  }
+
+  /**
+   * Open the item targeted by an event.
+   */
+  private _openSelectedItem(event: MouseEvent): void {
+    if (!this._shouldOpenFromEvent(event)) {
       return;
     }
 
@@ -2025,17 +2061,46 @@ export class DirListing extends Widget {
     clearTimeout(this._selectTimer);
     this._editNode.blur();
 
-    // Find a valid double click target.
-    const target = event.target as HTMLElement;
-    const i = ArrayExt.findFirstIndex(this._items, node =>
-      node.contains(target)
-    );
+    // Find a valid open target.
+    const i = this._getItemIndexFromEvent(event);
     if (i === -1) {
       return;
     }
 
     const item = this._sortedItems[i];
     this.handleOpen(item);
+  }
+
+  /**
+   * Whether an event should open a targeted item.
+   */
+  private _shouldOpenFromEvent(event: MouseEvent): boolean {
+    // Do nothing if it's not a left mouse press.
+    if (event.button !== 0) {
+      return false;
+    }
+
+    // Do nothing if any modifier keys are pressed.
+    if (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) {
+      return false;
+    }
+
+    // Do nothing if the event is on a checkbox. (Otherwise a rapid
+    // check-uncheck on the checkbox will cause the adjacent file/folder to
+    // open, which is probably not what the user intended.)
+    if (this.isWithinCheckboxHitArea(event)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get the item index targeted by an event.
+   */
+  private _getItemIndexFromEvent(event: MouseEvent): number {
+    const target = event.target as HTMLElement;
+    return ArrayExt.findFirstIndex(this._items, node => node.contains(target));
   }
 
   /**
@@ -2830,6 +2895,7 @@ export class DirListing extends Widget {
   private _sortFileNamesNaturally = true;
   private _allowSingleClick = false;
   private _allowDragDropUpload = true;
+  private _lastTouchTap: { path: string; time: number } | null = null;
   // _focusIndex should never be set outside the range [0, this._items.length - 1]
   private _focusIndex = 0;
   private _focusPath = '';
@@ -3937,6 +4003,11 @@ export namespace DirListing {
  * The namespace for the listing private data.
  */
 namespace Private {
+  /**
+   * The maximum interval between touch taps treated as a double tap.
+   */
+  export const TOUCH_DOUBLE_TAP_INTERVAL = 500;
+
   /**
    * Handle editing text on a node.
    *
