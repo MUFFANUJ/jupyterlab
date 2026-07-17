@@ -195,3 +195,72 @@ test.describe('CSS Selectors', () => {
     });
   }
 });
+
+test.describe('HoverBox CSS anchors', () => {
+  test('positions hover boxes using browser CSS anchor layout', async ({
+    page
+  }) => {
+    const supportsAnchorPositioning = await page.evaluate(() => {
+      return (
+        CSS.supports('anchor-name: --jp-test-hoverbox-anchor') &&
+        CSS.supports('position-anchor: --jp-test-hoverbox-anchor') &&
+        CSS.supports('top: anchor(--jp-test-hoverbox-anchor bottom)')
+      );
+    });
+    test.skip(
+      !supportsAnchorPositioning,
+      'CSS anchor positioning is not supported by this browser'
+    );
+
+    const rect = await page.evaluate(async () => {
+      const anchor = document.createElement('div');
+      anchor.className = 'jp-HoverBox-anchor';
+      anchor.style.setProperty(
+        '--jp-hoverbox-anchor-name',
+        '--jp-test-hoverbox-anchor'
+      );
+      anchor.style.setProperty('--jp-hoverbox-anchor-left', '120px');
+      anchor.style.setProperty('--jp-hoverbox-anchor-top', '80px');
+      anchor.style.setProperty('--jp-hoverbox-anchor-width', '20px');
+      anchor.style.setProperty('--jp-hoverbox-anchor-height', '10px');
+
+      const hoverBox = document.createElement('div');
+      hoverBox.className = 'jp-HoverBox';
+      hoverBox.textContent = 'hover';
+      hoverBox.style.setProperty(
+        '--jp-hoverbox-anchor-name',
+        '--jp-test-hoverbox-anchor'
+      );
+      hoverBox.style.setProperty('--jp-hoverbox-offset-below', '7px');
+      hoverBox.style.setProperty('--jp-hoverbox-offset-horizontal', '5px');
+      hoverBox.style.width = '40px';
+      hoverBox.style.height = '20px';
+
+      document.body.append(anchor, hoverBox);
+
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
+
+      const anchorRect = anchor.getBoundingClientRect();
+      const hoverBoxRect = hoverBox.getBoundingClientRect();
+
+      anchor.remove();
+      hoverBox.remove();
+
+      return {
+        anchorBottom: anchorRect.bottom,
+        anchorLeft: anchorRect.left,
+        hoverBoxLeft: hoverBoxRect.left,
+        hoverBoxTop: hoverBoxRect.top
+      };
+    });
+
+    expect(Math.round(rect.anchorLeft)).toBe(120);
+    expect(Math.round(rect.anchorBottom)).toBe(90);
+    expect(Math.round(rect.hoverBoxLeft)).toBe(125);
+    expect(Math.round(rect.hoverBoxTop)).toBe(97);
+  });
+});

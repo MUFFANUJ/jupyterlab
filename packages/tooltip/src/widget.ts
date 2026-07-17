@@ -25,11 +25,6 @@ const CONTENT_CLASS = 'jp-Tooltip-content';
 const BODY_CLASS = 'jp-mod-tooltip';
 
 /**
- * The minimum height of a tooltip widget.
- */
-const MIN_HEIGHT = 20;
-
-/**
  * The maximum height of a tooltip widget.
  */
 const MAX_HEIGHT = 250;
@@ -236,14 +231,9 @@ export class Tooltip extends Widget {
       anchor,
       host,
       maxHeight: MAX_HEIGHT,
-      minHeight: MIN_HEIGHT,
       node: this.node,
       offset: { horizontal: -1 * paddingLeft },
       privilege: 'below',
-      outOfViewDisplay: {
-        top: 'stick-inside',
-        bottom: 'stick-inside'
-      },
       style: style
     });
   }

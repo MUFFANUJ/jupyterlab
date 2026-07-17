@@ -86,7 +86,6 @@ export class Completer extends Widget {
     document.body.appendChild(tempNode);
     const computedStyle = window.getComputedStyle(tempNode);
     this._maxHeight = parseInt(computedStyle.maxHeight, 10);
-    this._minHeight = parseInt(computedStyle.minHeight, 10);
     this._scrollbarWidth = tempNode.offsetWidth - tempNode.clientWidth;
     document.body.removeChild(tempNode);
     const tempDocPanel = this._createDocPanelNode();
@@ -794,18 +793,11 @@ export class Completer extends Widget {
       anchor,
       host: host,
       maxHeight: this._maxHeight,
-      minHeight: this._minHeight,
       node: node,
       size: this.sizeCache,
       offset: { horizontal: borderLeft + paddingLeft },
       privilege: 'below',
-      style: style,
-      outOfViewDisplay: {
-        top: 'stick-inside',
-        bottom: 'stick-inside',
-        left: 'stick-inside',
-        right: 'stick-outside'
-      }
+      style: style
     });
     const current = ++this._geometryCounter;
     if (!this._sizeCache) {
@@ -915,11 +907,6 @@ export class Completer extends Widget {
    * The maximum height of a completer widget.
    */
   private _maxHeight: number;
-
-  /**
-   * The minimum height of a completer widget.
-   */
-  private _minHeight: number;
 
   private _scrollbarWidth: number;
   private _docPanelWidth: number;

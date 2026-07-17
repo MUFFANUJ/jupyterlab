@@ -5,4 +5,49 @@
 
 .jp-HoverBox {
   position: fixed;
+  position-anchor: var(--jp-hoverbox-anchor-name);
+  position-visibility: anchors-visible;
+  position-try:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
+  top: calc(
+    anchor(var(--jp-hoverbox-anchor-name) bottom) +
+      var(--jp-hoverbox-offset-below, 0px)
+  );
+  bottom: auto;
+  left: calc(
+    anchor(var(--jp-hoverbox-anchor-name) left) +
+      var(--jp-hoverbox-offset-horizontal, 0px)
+  );
+  right: auto;
+}
+
+.jp-HoverBox.jp-mod-above {
+  top: auto;
+  bottom: calc(
+    anchor(var(--jp-hoverbox-anchor-name) top) -
+      var(--jp-hoverbox-offset-above, 0px)
+  );
+  margin-top: 0;
+}
+
+.jp-HoverBox.jp-mod-force-position {
+  position-try: flip-inline;
+  position-try-fallbacks: flip-inline;
+}
+
+.jp-HoverBox-anchor {
+  position: fixed;
+  anchor-name: var(--jp-hoverbox-anchor-name);
+  top: var(--jp-hoverbox-anchor-top);
+  left: var(--jp-hoverbox-anchor-left);
+  width: var(--jp-hoverbox-anchor-width);
+  height: var(--jp-hoverbox-anchor-height);
+  pointer-events: none;
+  opacity: 0;
 }

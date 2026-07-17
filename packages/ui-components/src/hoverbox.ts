@@ -7,15 +7,19 @@
 const HOVERBOX_CLASS = 'jp-HoverBox';
 
 /**
- * The z-index used to hide hovering node that is scrolled out of view.
+ * The class name added to hover boxes rendered above their anchor.
  */
-const OUTOFVIEW_Z_INDEX = '-1000';
+const HOVERBOX_ABOVE_CLASS = 'jp-mod-above';
 
-type OutOfViewDisplay =
-  | 'hidden-inside'
-  | 'hidden-outside'
-  | 'stick-inside'
-  | 'stick-outside';
+/**
+ * The class name added to CSS anchor nodes used to position hover boxes.
+ */
+const HOVERBOX_ANCHOR_CLASS = 'jp-HoverBox-anchor';
+
+/**
+ * The class name added when block-axis fallback should be disabled.
+ */
+const HOVERBOX_FORCE_CLASS = 'jp-mod-force-position';
 
 /**
  * A namespace for `HoverBox` members.
@@ -37,11 +41,6 @@ export namespace HoverBox {
 
     /**
      * The node that hosts the anchor.
-     *
-     * #### Notes
-     * The visibility of the elements under hover box edges within this host
-     * node is the heuristic that determines whether the hover box ought to be
-     * visible.
      */
     host: HTMLElement;
 
@@ -53,11 +52,6 @@ export namespace HoverBox {
      * hover box. It is a fallback value.
      */
     maxHeight: number;
-
-    /**
-     * The minimum height of a hover box.
-     */
-    minHeight: number;
 
     /**
      * The hover box node.
@@ -98,22 +92,6 @@ export namespace HoverBox {
     style?: CSSStyleDeclaration;
 
     /**
-     * How to position the hover box if its edges extend beyond the view of the
-     * host element. Value 'sticky' positions the box at the (inner or outer)
-     * edge of the host element.
-     *
-     * #### Notes
-     * The default value for each edge is `'hidden-inside'` for left and top,
-     * and `hidden-outside` for right and bottom edges.
-     */
-    outOfViewDisplay?: {
-      top?: OutOfViewDisplay;
-      bottom?: OutOfViewDisplay;
-      left?: OutOfViewDisplay;
-      right?: OutOfViewDisplay;
-    };
-
-    /**
      * Exact size of the hover box. Pass it for faster rendering (allowing the
      * positioning algorithm to to place it immediately at requested position).
      */
@@ -137,9 +115,8 @@ export namespace HoverBox {
    * @param options - The hover box geometry calculation options.
    */
   export function setGeometry(options: IOptions): void {
-    const { anchor, host, node, privilege, outOfViewDisplay } = options;
-
-    const hostRect = host.getBoundingClientRect();
+    const { anchor, host, node, privilege } = options;
+    const anchorData = Private.getAnchorData(node, host.ownerDocument);
 
     // Add hover box class if it does not exist.
     if (!node.classList.contains(HOVERBOX_CLASS)) {
@@ -150,55 +127,23 @@ export namespace HoverBox {
     if (node.style.visibility) {
       node.style.visibility = '';
     }
-    if (node.style.zIndex === '') {
-      node.style.zIndex = '';
-    }
 
     // Clear any previously set max-height.
     node.style.maxHeight = '';
 
-    // Clear any programmatically set margin-top.
-    node.style.marginTop = '';
-
     const style = options.style || window.getComputedStyle(node);
-    const spaceAbove = anchor.top - hostRect.top;
-    const spaceBelow = hostRect.bottom - anchor.bottom;
-
-    const marginTop = parseInt(style.marginTop!, 10) || 0;
-    const marginLeft = parseInt(style.marginLeft!, 10) || 0;
-    const minHeight = parseInt(style.minHeight!, 10) || options.minHeight;
-
-    let maxHeight = parseInt(style.maxHeight!, 10) || options.maxHeight;
+    const maxHeight = parseInt(style.maxHeight!, 10) || options.maxHeight;
 
     // Determine whether to render above or below; check privilege.
     const renderBelow =
-      privilege === 'forceAbove'
-        ? false
-        : privilege === 'forceBelow'
-          ? true
-          : privilege === 'above'
-            ? spaceAbove < maxHeight && spaceAbove < spaceBelow
-            : spaceBelow >= maxHeight || spaceBelow >= spaceAbove;
+      privilege === 'forceAbove' ? false : privilege === 'above' ? false : true;
 
-    if (renderBelow) {
-      maxHeight = Math.min(spaceBelow - marginTop, maxHeight);
-    } else {
-      maxHeight = Math.min(spaceAbove, maxHeight);
-      // If the box renders above the text, its top margin is irrelevant.
-      node.style.marginTop = '0px';
-    }
+    node.classList.toggle(HOVERBOX_ABOVE_CLASS, !renderBelow);
+    node.classList.toggle(
+      HOVERBOX_FORCE_CLASS,
+      privilege === 'forceAbove' || privilege === 'forceBelow'
+    );
     node.style.maxHeight = `${maxHeight}px`;
-
-    // Make sure the box ought to be visible.
-    const withinBounds =
-      maxHeight >= minHeight &&
-      (spaceBelow >= minHeight || spaceAbove >= minHeight);
-
-    if (!withinBounds) {
-      node.style.zIndex = OUTOFVIEW_Z_INDEX;
-      node.style.visibility = 'hidden';
-      return;
-    }
 
     if (options.size) {
       node.style.width = `${options.size.width}px`;
@@ -210,10 +155,6 @@ export namespace HoverBox {
       node.style.height = '';
     }
 
-    // Position the box vertically.
-    const initialHeight = options.size
-      ? options.size.height
-      : node.getBoundingClientRect().height;
     const offsetAbove =
       (options.offset &&
         options.offset.vertical &&
@@ -224,187 +165,127 @@ export namespace HoverBox {
         options.offset.vertical &&
         options.offset.vertical.below) ||
       0;
-    let top = renderBelow
-      ? hostRect.bottom - spaceBelow + offsetBelow
-      : hostRect.top + spaceAbove - initialHeight + offsetAbove;
-    node.style.top = `${Math.floor(top)}px`;
-
-    // Position the box horizontally.
     const offsetHorizontal = (options.offset && options.offset.horizontal) || 0;
-    let left = anchor.left + offsetHorizontal;
 
-    node.style.left = `${Math.ceil(left)}px`;
+    Private.setAnchorGeometry(anchorData.node, anchorData.name, anchor);
+    Private.setAnchorPosition(node, {
+      anchorName: anchorData.name,
+      offsetAbove,
+      offsetBelow,
+      offsetHorizontal
+    });
+  }
+}
 
-    let rect = node.getBoundingClientRect();
+namespace Private {
+  interface IAnchorData {
+    hoverNode: HTMLElement;
+    name: string;
+    node: HTMLElement;
+    ownerDocument: Document;
+    observer: MutationObserver;
+    observing: boolean;
+  }
 
-    // Move left to fit in the window.
-    let right = rect.right;
-    if (right > window.innerWidth) {
-      left -= right - window.innerWidth;
-      right = window.innerWidth;
-      node.style.left = `${Math.ceil(left)}px`;
+  let anchorId = 0;
+  const anchorDataByNode = new WeakMap<HTMLElement, IAnchorData>();
+
+  export function getAnchorData(
+    node: HTMLElement,
+    ownerDocument: Document
+  ): IAnchorData {
+    let data = anchorDataByNode.get(node);
+    if (data && data.node.ownerDocument !== ownerDocument) {
+      data.node.remove();
+      untrackAnchor(data);
+      data = undefined;
     }
-
-    // Move right to fit in the window
-    if (left < offsetHorizontal - marginLeft) {
-      left = offsetHorizontal - marginLeft;
-      node.style.left = `${Math.ceil(left)}px`;
+    if (!data) {
+      const anchorNode = ownerDocument.createElement('div');
+      anchorNode.className = HOVERBOX_ANCHOR_CLASS;
+      anchorNode.setAttribute('aria-hidden', 'true');
+      data = {
+        hoverNode: node,
+        name: `--jp-hoverbox-anchor-${++anchorId}`,
+        node: anchorNode,
+        observer: new MutationObserver(() => {
+          if (!node.isConnected) {
+            anchorNode.remove();
+            data?.observer.disconnect();
+            anchorDataByNode.delete(node);
+          }
+        }),
+        ownerDocument,
+        observing: false
+      };
+      anchorDataByNode.set(node, data);
     }
-
-    // Hide the hover box before querying the DOM for the anchor coordinates.
-    // Using z-index set directly for performance.
-    node.style.zIndex = '-1000';
-
-    const bottom = rect.bottom;
-
-    const includesLeftTop = host.contains(document.elementFromPoint(left, top));
-    const includesRightTop = host.contains(
-      document.elementFromPoint(right, top)
-    );
-    const includesRightBottom = host.contains(
-      document.elementFromPoint(right, bottom)
-    );
-    const includesLeftBottom = host.contains(
-      document.elementFromPoint(left, bottom)
-    );
-
-    node.style.zIndex = '';
-
-    const topEdgeInside = includesLeftTop || includesRightTop;
-    const bottomEdgeInside = includesLeftBottom || includesRightBottom;
-    const leftEdgeInside = includesLeftTop || includesLeftBottom;
-    const rightEdgeInside = includesRightBottom || includesRightTop;
-
-    const height = bottom - top;
-    const width = right - left;
-
-    const overTheTop = top < hostRect.top;
-    const belowTheBottom = bottom > hostRect.bottom;
-    const beforeTheLeft = left + marginLeft < hostRect.left;
-    const afterTheRight = right > hostRect.right;
-
-    let hide = false;
-    let leftChanged = false;
-    let topChanged = false;
-
-    if (overTheTop) {
-      switch (outOfViewDisplay?.top || 'hidden-inside') {
-        case 'hidden-inside':
-          if (!topEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'hidden-outside':
-          if (!bottomEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'stick-inside':
-          if (hostRect.top > top) {
-            top = hostRect.top;
-            topChanged = true;
-          }
-          break;
-        case 'stick-outside':
-          if (hostRect.top > bottom) {
-            top = hostRect.top - height;
-            topChanged = true;
-          }
-          break;
-      }
+    if (node.isConnected && !data.node.isConnected) {
+      ownerDocument.body.appendChild(data.node);
+      trackAnchor(data);
     }
+    return data;
+  }
 
-    if (belowTheBottom) {
-      switch (outOfViewDisplay?.bottom || 'hidden-outside') {
-        case 'hidden-inside':
-          if (!bottomEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'hidden-outside':
-          if (!topEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'stick-inside':
-          if (hostRect.bottom < bottom) {
-            top = hostRect.bottom - height;
-            topChanged = true;
-          }
-          break;
-        case 'stick-outside':
-          if (hostRect.bottom < top) {
-            top = hostRect.bottom;
-            topChanged = true;
-          }
-          break;
-      }
-    }
+  export function setAnchorGeometry(
+    node: HTMLElement,
+    name: string,
+    anchor: HoverBox.IAnchor
+  ): void {
+    setStyleProperties(node, [
+      ['--jp-hoverbox-anchor-name', name],
+      ['--jp-hoverbox-anchor-left', `${anchor.left}px`],
+      ['--jp-hoverbox-anchor-top', `${anchor.top}px`],
+      [
+        '--jp-hoverbox-anchor-width',
+        `${Math.max(0, anchor.right - anchor.left)}px`
+      ],
+      [
+        '--jp-hoverbox-anchor-height',
+        `${Math.max(0, anchor.bottom - anchor.top)}px`
+      ]
+    ]);
+  }
 
-    if (beforeTheLeft) {
-      switch (outOfViewDisplay?.left || 'hidden-inside') {
-        case 'hidden-inside':
-          if (!leftEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'hidden-outside':
-          if (!rightEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'stick-inside':
-          if (hostRect.left > left + marginLeft) {
-            left = hostRect.left - marginLeft;
-            leftChanged = true;
-          }
-          break;
-        case 'stick-outside':
-          if (hostRect.left > right) {
-            left = hostRect.left - marginLeft - width;
-            leftChanged = true;
-          }
-          break;
-      }
+  export function setAnchorPosition(
+    node: HTMLElement,
+    options: {
+      anchorName: string;
+      offsetAbove: number;
+      offsetBelow: number;
+      offsetHorizontal: number;
     }
+  ): void {
+    setStyleProperties(node, [
+      ['--jp-hoverbox-anchor-name', options.anchorName],
+      ['--jp-hoverbox-offset-above', `${options.offsetAbove}px`],
+      ['--jp-hoverbox-offset-below', `${options.offsetBelow}px`],
+      ['--jp-hoverbox-offset-horizontal', `${options.offsetHorizontal}px`]
+    ]);
+  }
 
-    if (afterTheRight) {
-      switch (outOfViewDisplay?.right || 'hidden-outside') {
-        case 'hidden-inside':
-          if (!rightEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'hidden-outside':
-          if (!leftEdgeInside) {
-            hide = true;
-          }
-          break;
-        case 'stick-inside':
-          if (hostRect.right < right) {
-            left = hostRect.right - width;
-            leftChanged = true;
-          }
-          break;
-        case 'stick-outside':
-          if (hostRect.right < left) {
-            left = hostRect.right;
-            leftChanged = true;
-          }
-          break;
-      }
+  function setStyleProperties(
+    node: HTMLElement,
+    properties: Array<[string, string]>
+  ): void {
+    for (const [name, value] of properties) {
+      node.style.setProperty(name, value);
     }
+  }
 
-    if (hide) {
-      node.style.zIndex = OUTOFVIEW_Z_INDEX;
-      node.style.visibility = 'hidden';
+  function trackAnchor(data: IAnchorData): void {
+    if (data.observing) {
+      return;
     }
+    data.observer.observe(data.ownerDocument.body, {
+      childList: true,
+      subtree: true
+    });
+    data.observing = true;
+  }
 
-    if (leftChanged) {
-      node.style.left = `${Math.ceil(left)}px`;
-    }
-    if (topChanged) {
-      node.style.top = `${Math.ceil(top)}px`;
-    }
+  function untrackAnchor(data: IAnchorData): void {
+    data.observer.disconnect();
+    data.observing = false;
   }
 }

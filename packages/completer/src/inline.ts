@@ -554,15 +554,8 @@ export class InlineCompleter extends Widget {
       anchor,
       host: host,
       maxHeight: 40,
-      minHeight: 20,
       node: node,
-      privilege: 'forceAbove',
-      outOfViewDisplay: {
-        top: 'stick-outside',
-        bottom: 'stick-inside',
-        left: 'stick-inside',
-        right: 'stick-outside'
-      }
+      privilege: 'forceAbove'
     });
   }
 

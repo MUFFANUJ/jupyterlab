@@ -158,7 +158,6 @@ export class Popup extends Widget {
       anchor: anchorRect,
       host: document.body,
       maxHeight: 500,
-      minHeight: 20,
       node: this._body.node,
       offset: {
         horizontal: aligned
